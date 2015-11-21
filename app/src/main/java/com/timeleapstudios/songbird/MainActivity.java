@@ -38,11 +38,6 @@ import java.util.List;
 
 public class MainActivity extends ActionBarActivity implements Button.OnClickListener, MediaPlayerControl {
 
-    private Button myBtn;
-    private TextView myTxt;
-    private File file;
-    private List<String> myList;
-
     private ArrayList<Song> songList;
     private ListView songView;
 
@@ -57,6 +52,8 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
      * See https://g.co/AppIndexing/AndroidStudio for more information.
      */
     private GoogleApiClient client;
+
+    //region Basic App Functionality
 
     @Override
     protected void onStart() {
@@ -128,18 +125,66 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
 
         setController();
 
-        if (findViewById(R.id.fragment) != null) {   // TODO This might not be needed in single fragment case
-
-        }
-        //myBtn = (Button) findViewById(R.id.button);
-        //myBtn.setOnClickListener(this);
-        //myTxt = (TextView) findViewById(R.id.textview);
-
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        switch (item.getItemId()) {
+            case R.id.action_shuffle:
+                //shuffle
+                musicSrv.setShuffle();
+                break;
+            case R.id.action_end:
+                stopService(playIntent);
+                musicSrv = null;
+                System.exit(0);
+                break;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onClick(View v) {
+
+    }
+
+    @Override
+    public void onStop() {
+        controller.hide();
+        super.onStop();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "Main Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app deep link URI is correct.
+                Uri.parse("android-app://com.timeleapstudios.songbird/http/host/path")
+        );
+        AppIndex.AppIndexApi.end(client, viewAction);
+        client.disconnect();
+    }
+
+    //endregion
+
+    //region MusicController Functionality
     @Override
     public void start() {
         musicSrv.go();
@@ -210,6 +255,51 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
         return 0;
     }
 
+    private void setController(){
+        //set the controller up
+        controller = new MusicController(this);
+        controller.setPrevNextListeners(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                playNext();
+            }
+        }, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                playPrev();
+            }
+        });
+
+        controller.setMediaPlayer(this);
+        controller.setAnchorView(findViewById(R.id.fragment));
+        controller.setEnabled(true);
+    }
+
+    //endregion
+
+    //region Service Functionality
+    //connect to the service
+    private ServiceConnection musicConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            MusicService.MusicBinder binder = (MusicService.MusicBinder) service;
+            //get service
+            musicSrv = binder.getService();
+            //pass list
+            musicSrv.setList(songList);
+            musicBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            musicBound = false;
+        }
+    };
+    //endregion
+
+    //region MediaPlayer Functionality
+
     //play next
     private void playNext(){
         musicSrv.playNext();
@@ -230,7 +320,19 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
         controller.show(0);
     }
 
+    public void songPicked(View view) {
+        musicSrv.setSong(Integer.parseInt(view.getTag().toString()));
+        musicSrv.playSong();
+        if(playbackPaused){
+            setController();
+            playbackPaused=false;
+        }
+        controller.show(0);
+    }
 
+    //endregion
+
+    //region Playlist Handling
 
     public void getSongList() {
         //retrieve song info
@@ -260,122 +362,6 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
 
     }
 
-    //connect to the service
-    private ServiceConnection musicConnection = new ServiceConnection() {
+    //endregion
 
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            MusicService.MusicBinder binder = (MusicService.MusicBinder) service;
-            //get service
-            musicSrv = binder.getService();
-            //pass list
-            musicSrv.setList(songList);
-            musicBound = true;
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            musicBound = false;
-        }
-    };
-
-
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        switch (item.getItemId()) {
-            case R.id.action_shuffle:
-                //shuffle
-                musicSrv.setShuffle();
-                break;
-            case R.id.action_end:
-                stopService(playIntent);
-                musicSrv = null;
-                System.exit(0);
-                break;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public void onClick(View v) {
-        /*if(v.getId() == R.id.button){
-            Log.d("Button", "Clicked Button");
-            myList = new ArrayList<String>();
-            Uri songPath;
-
-            String root_sd = Environment.getExternalStorageDirectory().toString();
-            Log.d("Button",root_sd + "/Songs/Broken.mp3");
-            file = new File( root_sd ) ;
-            File list[] = file.listFiles();
-            for( int i=0; i< list.length; i++) {
-                myList.add( list[i].getName() );
-            }
-            //songPath = Uri.parse(root_sd + "/Songs/Broken.mp3");
-            //MediaPlayer mp = MediaPlayer.create(this,songPath);
-            //mp.start();
-        }*/
-
-    }
-
-    public void songPicked(View view) {
-        musicSrv.setSong(Integer.parseInt(view.getTag().toString()));
-        musicSrv.playSong();
-        if(playbackPaused){
-            setController();
-            playbackPaused=false;
-        }
-        controller.show(0);
-    }
-
-    private void setController(){
-        //set the controller up
-        controller = new MusicController(this);
-        controller.setPrevNextListeners(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                playNext();
-            }
-        }, new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                playPrev();
-            }
-        });
-
-        controller.setMediaPlayer(this);
-        controller.setAnchorView(findViewById(R.id.fragment));
-        controller.setEnabled(true);
-    }
-
-    @Override
-    public void onStop() {
-        controller.hide();
-        super.onStop();
-
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        Action viewAction = Action.newAction(
-                Action.TYPE_VIEW, // TODO: choose an action type.
-                "Main Page", // TODO: Define a title for the content shown.
-                // TODO: If you have web page content that matches this app activity's content,
-                // make sure this auto-generated web page URL is correct.
-                // Otherwise, set the URL to null.
-                Uri.parse("http://host/path"),
-                // TODO: Make sure this auto-generated app deep link URI is correct.
-                Uri.parse("android-app://com.timeleapstudios.songbird/http/host/path")
-        );
-        AppIndex.AppIndexApi.end(client, viewAction);
-        client.disconnect();
-    }
 }

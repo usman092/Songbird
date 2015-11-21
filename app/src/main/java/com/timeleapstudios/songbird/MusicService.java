@@ -63,6 +63,11 @@ public class MusicService extends Service implements
     }
 
     @Override
+    public void onDestroy() {
+        stopForeground(true);
+    }
+
+    @Override
     public void onCompletion(MediaPlayer mp) {
         if(player.getCurrentPosition() > 0){
             mp.reset();
@@ -99,8 +104,6 @@ public class MusicService extends Service implements
         startForeground(NOTIFY_ID, not);
     }
 
-    /********* My Functions **********/
-
     public void initMusicPlayer() {
         //set player properties
         player.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
@@ -117,11 +120,6 @@ public class MusicService extends Service implements
         else{
             shuffle=true;
         }
-    }
-
-    @Override
-    public void onDestroy() {
-        stopForeground(true);
     }
 
     public void playSong(){
@@ -205,8 +203,6 @@ public class MusicService extends Service implements
         }
         playSong();
     }
-
-
 
     public class MusicBinder extends Binder {
         MusicService getService() {
