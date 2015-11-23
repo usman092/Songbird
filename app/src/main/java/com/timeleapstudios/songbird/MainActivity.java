@@ -1,23 +1,22 @@
 package com.timeleapstudios.songbird;
 
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
-import android.media.MediaPlayer;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.content.ComponentName;
@@ -27,16 +26,14 @@ import android.widget.MediaController.MediaPlayerControl;
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.timeleapstudios.songbird.MusicService;
 
-import java.io.File;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
 
 public class MainActivity extends ActionBarActivity implements Button.OnClickListener, MediaPlayerControl {
+
+    private String THIS_FILE = "MainActivity";
 
     private ArrayList<Song> songList;
     private ListView songView;
@@ -45,7 +42,9 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
     private Intent playIntent;
     private boolean musicBound = false;
     private MusicController controller;
-    private boolean paused=false, playbackPaused=false;
+    private boolean paused=true, playbackPaused=true;
+
+    private MusicIntentReceiver headsetPluggedReceiver;
 
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
@@ -83,17 +82,24 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
 
     @Override
     protected void onPause(){
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
         super.onPause();
         paused = true;
     }
 
     @Override
     protected void onResume(){
+        IntentFilter filter = new IntentFilter(Intent.ACTION_HEADSET_PLUG);
+        registerReceiver(headsetPluggedReceiver, filter);
         super.onResume();
         if(paused){
             setController();
             paused=false;
         }
+
+        // Register mMessageReceiver to receive messages.
+        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
+                new IntentFilter(Constants.HEADSET_STATE));
     }
 
     @Override
@@ -124,6 +130,17 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
         songView.setAdapter(songAdt);
 
         setController();
+
+        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        int result = audioManager.requestAudioFocus(musicSrv, AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN);
+
+        if (result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            // could not get audio focus.
+            Log.d(THIS_FILE,"Failed to Gain Audio Focus");
+        }
+
+        headsetPluggedReceiver = new MusicIntentReceiver();
 
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -199,7 +216,7 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
 
     @Override
     public int getDuration() {
-        if(musicSrv!=null && musicBound && musicSrv.isPng()){
+        if(musicSrv!=null && musicBound){
             return musicSrv.getDur();
         }
         else{
@@ -209,7 +226,7 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
 
     @Override
     public int getCurrentPosition() {
-        if(musicSrv!=null && musicBound && musicSrv.isPng()){
+        if(musicSrv!=null && musicBound){
             return musicSrv.getPosn();
         }
         else {
@@ -294,6 +311,26 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
         @Override
         public void onServiceDisconnected(ComponentName name) {
             musicBound = false;
+        }
+    };
+
+    // handler for received Intents for the "my-event" event
+    private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Extract data included in the Intent
+            if(intent.getAction().equals(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY)){
+                if(musicSrv != null && musicBound && intent.getBooleanExtra(Constants.AUDIO_NOISY,true)){
+                    musicSrv.pausePlayer();
+                    paused = true;
+                }
+            }
+            else if(musicSrv != null && musicBound && intent.getAction().equals(Intent.ACTION_HEADSET_PLUG)){
+                if(intent.getBooleanExtra("HEADSET_PLUG",true)){
+                    musicSrv.go();
+                    paused = false;
+                }
+            }
         }
     };
     //endregion
