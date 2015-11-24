@@ -100,6 +100,8 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
         // Register mMessageReceiver to receive messages.
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
                 new IntentFilter(Constants.HEADSET_STATE));
+        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
+                new IntentFilter(Constants.MUSIC_PLAYER));
     }
 
     @Override
@@ -330,6 +332,11 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
                     musicSrv.go();
                     paused = false;
                 }
+            }
+            else if(musicSrv != null && musicBound && intent.getAction().equals(Constants.MUSIC_PLAYER)){
+                setController();
+                controller.show(0);
+                Log.d(THIS_FILE,"Update Music Controller Intent received");
             }
         }
     };

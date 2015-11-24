@@ -10,6 +10,7 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -85,6 +86,12 @@ public class MusicService extends Service implements
     public void onPrepared(MediaPlayer mp) {
         //start playback
         mp.start();
+
+        // Intent to notify MainActivity to Update MusicController
+        Intent broadcast = new Intent();
+        broadcast.setAction(Constants.MUSIC_PLAYER);
+        this.sendBroadcast(broadcast);
+        //LocalBroadcastManager.getInstance(this).sendBroadcast(broadcast);
 
         Intent notIntent = new Intent(this, MainActivity.class);
         notIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);

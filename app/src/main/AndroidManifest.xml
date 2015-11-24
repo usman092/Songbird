@@ -27,6 +27,9 @@
             <intent-filter>
                 <action android:name="android.media.AUDIO_BECOMING_NOISY" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="com.timeleapstudios.songbird.MUSIC_PLAYER" />
+            </intent-filter>
         </receiver>
 
         <service android:name="com.timeleapstudios.songbird.MusicService" />

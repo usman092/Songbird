@@ -42,6 +42,11 @@ public class MusicIntentReceiver extends android.content.BroadcastReceiver {
                     Log.d(THIS_FILE, "Unknown headset state");
             }
         }
+        else if(intent.getAction().equals(Constants.MUSIC_PLAYER)){
+            LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+            Log.d(THIS_FILE, intent.getAction().toString());
+        }
+
 
     }
 }
