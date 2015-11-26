@@ -159,6 +159,7 @@ public class MusicService extends Service implements
     }
 
     public void setList(ArrayList<Song> theSongs){
+        songs = null;
         songs=theSongs;
     }
 

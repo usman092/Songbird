@@ -4,6 +4,7 @@ package com.timeleapstudios.songbird;
  * Created by Usman on 11/19/2015.
  */
 
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -11,17 +12,28 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.app.Activity;
 
 import java.util.ArrayList;
 
-public class SongAdapter extends BaseAdapter{
+public class SongAdapter extends BaseAdapter {
 
     private ArrayList<Song> songs;
     private LayoutInflater songInf;
+    private Context appContext;
+    private Interfaces.OnSongSelectionListener listener;
 
-    public SongAdapter(Context c, ArrayList<Song> theSongs){
+    public SongAdapter(Context c, ArrayList<Song> theSongs, Activity activity){
         songs=theSongs;
         songInf=LayoutInflater.from(c);
+        appContext = c;
+
+        try {
+            listener = (Interfaces.OnSongSelectionListener) activity;
+        } catch (ClassCastException e) {
+            throw new ClassCastException(activity.toString() + " must implement OnFragmentInteractionListener");
+        }
+
     }
 
     @Override
@@ -54,6 +66,13 @@ public class SongAdapter extends BaseAdapter{
         artistView.setText(currSong.getArtist());
         //set position as tag
         songLay.setTag(position);
+        songLay.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Log.i("SongAdapter",""+Integer.parseInt(view.getTag().toString()));
+                listener.onSongSelected(Integer.parseInt(view.getTag().toString()));
+            }
+        });
         return songLay;
     }
 }

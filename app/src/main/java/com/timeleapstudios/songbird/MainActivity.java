@@ -9,8 +9,12 @@ import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.support.design.widget.TabLayout;
+import android.support.v4.app.FragmentTabHost;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBarActivity;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -22,18 +26,23 @@ import android.os.IBinder;
 import android.content.ComponentName;
 import android.content.Context;
 import android.widget.MediaController.MediaPlayerControl;
+import android.support.v7.app.AppCompatActivity;
 
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.gson.Gson;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 
-public class MainActivity extends ActionBarActivity implements Button.OnClickListener, MediaPlayerControl {
+public class MainActivity extends AppCompatActivity implements Button.OnClickListener, MediaPlayerControl,
+        Interfaces.OnFragmentInteractionListener, Interfaces.OnSongSelectionListener {
 
     private String THIS_FILE = "MainActivity";
+
+    private int currentTabId;
 
     private ArrayList<Song> songList;
     private ListView songView;
@@ -116,22 +125,12 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        songView = (ListView) findViewById(R.id.song_list);
+        //songView = (ListView) viewPager.findViewById(R.id.song_list);
+        songView = new ListView(this);
+
         songList = new ArrayList<Song>();
 
         getSongList();
-
-        // Sort the songs alphabetically
-        Collections.sort(songList, new Comparator<Song>() {
-            public int compare(Song a, Song b) {
-                return a.getTitle().compareTo(b.getTitle());
-            }
-        });
-
-        SongAdapter songAdt = new SongAdapter(this, songList);
-        songView.setAdapter(songAdt);
-
-        setController();
 
         AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         int result = audioManager.requestAudioFocus(musicSrv, AudioManager.STREAM_MUSIC,
@@ -143,6 +142,39 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
         }
 
         headsetPluggedReceiver = new MusicIntentReceiver();
+
+
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        TabLayout tabLayout = (TabLayout) findViewById(R.id.tab_layout);
+        tabLayout.addTab(tabLayout.newTab().setText("Songs"));
+        tabLayout.addTab(tabLayout.newTab().setText("Tab 2"));
+        tabLayout.addTab(tabLayout.newTab().setText("Tab 3"));
+        tabLayout.setTabGravity(TabLayout.GRAVITY_FILL);
+
+        final ViewPager viewPager = (ViewPager) findViewById(R.id.pager);
+        final PagerAdapter adapter = new PagerAdapter
+                (getSupportFragmentManager(), tabLayout.getTabCount());
+        viewPager.setAdapter(adapter);
+        viewPager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(tabLayout));
+        tabLayout.setOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                viewPager.setCurrentItem(tab.getPosition());
+                currentTabId = tab.getPosition();
+            }
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+
+            }
+        });
 
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
@@ -290,7 +322,7 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
         });
 
         controller.setMediaPlayer(this);
-        controller.setAnchorView(findViewById(R.id.fragment));
+        controller.setAnchorView(findViewById(R.id.rlBase));
         controller.setEnabled(true);
     }
 
@@ -404,6 +436,31 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
             while (musicCursor.moveToNext());
         }
 
+    }
+
+    @Override
+    public void onFragmentCreated(int number) {
+        Intent i = new Intent(Constants.FRAGMENT_BROADCAST_RECEIVER);
+        i.putExtra("song_list", new Gson().toJson(songList));
+
+        LocalBroadcastManager.getInstance(this).sendBroadcast(i);
+    }
+
+    @Override
+    public void onSongListPopulated(ArrayList<Song> song_list) {
+        musicSrv.setList(song_list);
+
+    }
+
+    @Override
+    public void onSongSelected(int number) {
+        musicSrv.setSong(number);
+        musicSrv.playSong();
+        if(playbackPaused){
+            setController();
+            playbackPaused=false;
+        }
+        controller.show(0);
     }
 
     //endregion
