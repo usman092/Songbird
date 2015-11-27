@@ -38,12 +38,14 @@ public class MainActivityFragment extends Fragment {
     private ArrayList<Song> songList;
 
     private Interfaces.OnFragmentInteractionListener listener;
+    private FragmentBroadcastReceiver fragmentBroadcastReceiver = null;
 
     public class FragmentBroadcastReceiver extends BroadcastReceiver {
 
         @Override
         public void onReceive(Context context, Intent intent) {
             Log.i(THIS_FILE, "MainActivity communicated with fragment");
+            // Extract data included in the Intent
             String jsonMyObject;
             Bundle extras = intent.getExtras();
             if (extras != null) {
@@ -63,23 +65,24 @@ public class MainActivityFragment extends Fragment {
                     songView.setAdapter(songAdt);
                 }
             }
-
         }
     }
 
     public MainActivityFragment() {
-
+        if(fragmentBroadcastReceiver == null){
+            fragmentBroadcastReceiver = new FragmentBroadcastReceiver();
+        }
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
-
     }
 
     @Override
     public void onDetach(){
-        LocalBroadcastManager.getInstance(getActivity()).unregisterReceiver(new FragmentBroadcastReceiver());
+        LocalBroadcastManager.getInstance(getActivity()).unregisterReceiver(fragmentBroadcastReceiver);
+        //register
         super.onDetach();
     }
 
@@ -106,8 +109,10 @@ public class MainActivityFragment extends Fragment {
             throw new ClassCastException(activity.toString() + " must implement OnFragmentInteractionListener");
         }
         super.onAttach(activity);
-        LocalBroadcastManager.getInstance(getActivity()).registerReceiver(new FragmentBroadcastReceiver(),
+        LocalBroadcastManager.getInstance(getActivity()).registerReceiver(fragmentBroadcastReceiver,
                 new IntentFilter(Constants.FRAGMENT_BROADCAST_RECEIVER));
+        //LocalBroadcastManager.getInstance(getActivity()).registerReceiver(fragmentBroadcastReceiver,
+        //        new IntentFilter(Constants.MUSIC_PLAYER));
     }
 
     @Override

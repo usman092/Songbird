@@ -1,5 +1,7 @@
 package com.timeleapstudios.songbird;
 
+import android.content.Intent;
+
 import java.util.ArrayList;
 
 /**
@@ -9,6 +11,7 @@ public class Interfaces {
     public interface OnFragmentInteractionListener {
         public void onFragmentCreated (int number);
         public void onSongListPopulated(ArrayList<Song> song_list);
+        public void onBroadcast(Intent intent);
     }
 
     public interface OnSongSelectionListener {

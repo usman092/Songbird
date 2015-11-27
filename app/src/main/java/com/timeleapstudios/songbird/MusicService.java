@@ -89,8 +89,10 @@ public class MusicService extends Service implements
 
         // Intent to notify MainActivity to Update MusicController
         Intent broadcast = new Intent();
+
         broadcast.setAction(Constants.MUSIC_PLAYER);
-        this.sendBroadcast(broadcast);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(broadcast);
+        //this.sendBroadcast(broadcast);
         //LocalBroadcastManager.getInstance(this).sendBroadcast(broadcast);
 
         Intent notIntent = new Intent(this, MainActivity.class);

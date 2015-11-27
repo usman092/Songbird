@@ -51,7 +51,9 @@ public class MainActivity extends AppCompatActivity implements Button.OnClickLis
     private Intent playIntent;
     private boolean musicBound = false;
     private MusicController controller;
-    private boolean paused=true, playbackPaused=true;
+    private boolean paused=true, playbackPaused=true, playbackStarted = false;
+
+    private MusicIntentReceiver mMessageReceiver;
 
     private MusicIntentReceiver headsetPluggedReceiver;
 
@@ -92,14 +94,15 @@ public class MainActivity extends AppCompatActivity implements Button.OnClickLis
     @Override
     protected void onPause(){
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(headsetPluggedReceiver);
         super.onPause();
         paused = true;
     }
 
     @Override
     protected void onResume(){
-        IntentFilter filter = new IntentFilter(Intent.ACTION_HEADSET_PLUG);
-        registerReceiver(headsetPluggedReceiver, filter);
+        //IntentFilter filter = new IntentFilter(Constants.MUSIC_PLAYER);
+        //LocalBroadcastManager.getInstance(this).registerReceiver(headsetPluggedReceiver, filter);
         super.onResume();
         if(paused){
             setController();
@@ -107,10 +110,11 @@ public class MainActivity extends AppCompatActivity implements Button.OnClickLis
         }
 
         // Register mMessageReceiver to receive messages.
-        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
-                new IntentFilter(Constants.HEADSET_STATE));
-        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
-                new IntentFilter(Constants.MUSIC_PLAYER));
+        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,new IntentFilter(Constants.MUSIC_PLAYER));
+        //LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
+                //new IntentFilter(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+        registerReceiver(mMessageReceiver, new IntentFilter(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+        registerReceiver(mMessageReceiver, new IntentFilter(Intent.ACTION_HEADSET_PLUG));
     }
 
     @Override
@@ -141,8 +145,8 @@ public class MainActivity extends AppCompatActivity implements Button.OnClickLis
             Log.d(THIS_FILE,"Failed to Gain Audio Focus");
         }
 
-        headsetPluggedReceiver = new MusicIntentReceiver();
-
+        headsetPluggedReceiver = new MusicIntentReceiver(this);
+        mMessageReceiver = new MusicIntentReceiver(this);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -347,31 +351,6 @@ public class MainActivity extends AppCompatActivity implements Button.OnClickLis
             musicBound = false;
         }
     };
-
-    // handler for received Intents for the "my-event" event
-    private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            // Extract data included in the Intent
-            if(intent.getAction().equals(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY)){
-                if(musicSrv != null && musicBound && intent.getBooleanExtra(Constants.AUDIO_NOISY,true)){
-                    musicSrv.pausePlayer();
-                    paused = true;
-                }
-            }
-            else if(musicSrv != null && musicBound && intent.getAction().equals(Intent.ACTION_HEADSET_PLUG)){
-                if(intent.getBooleanExtra("HEADSET_PLUG",true)){
-                    musicSrv.go();
-                    paused = false;
-                }
-            }
-            else if(musicSrv != null && musicBound && intent.getAction().equals(Constants.MUSIC_PLAYER)){
-                setController();
-                controller.show(0);
-                Log.d(THIS_FILE,"Update Music Controller Intent received");
-            }
-        }
-    };
     //endregion
 
     //region MediaPlayer Functionality
@@ -453,6 +432,30 @@ public class MainActivity extends AppCompatActivity implements Button.OnClickLis
     }
 
     @Override
+    public void onBroadcast(Intent intent) {
+        if(intent.getAction().equals(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY)){
+            if(playbackStarted != false && musicSrv != null && musicBound && intent.getBooleanExtra(Constants.AUDIO_NOISY,true)){
+                musicSrv.pausePlayer();
+                paused = true;
+            }
+        }
+        else if(musicSrv != null && musicBound && intent.getAction().equals(Intent.ACTION_HEADSET_PLUG)){
+            if(playbackStarted != false && intent.getBooleanExtra("HEADSET_PLUG",true)){
+                int state = intent.getIntExtra("state", -1);
+                if(state == 1) {
+                    musicSrv.go();
+                    paused = false;
+                }
+            }
+        }
+        else if(musicSrv != null && musicBound && intent.getAction().equals(Constants.MUSIC_PLAYER)){
+            setController();
+            controller.show(0);
+            Log.d(THIS_FILE,"Update Music Controller Intent received");
+        }
+    }
+
+    @Override
     public void onSongSelected(int number) {
         musicSrv.setSong(number);
         musicSrv.playSong();
@@ -460,6 +463,7 @@ public class MainActivity extends AppCompatActivity implements Button.OnClickLis
             setController();
             playbackPaused=false;
         }
+        playbackStarted = true;
         controller.show(0);
     }
 
